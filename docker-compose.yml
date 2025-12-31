@@ -58,6 +58,53 @@ services:
       - "5672:5672"
       - "15672:15672"
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  splunk:
+    image: splunk/splunk:latest
+    environment:
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=password123
+      - SPLUNK_OPTIMISTIC_ABOUT_FILE_LOCKING=1
+    ports:
+      - "8000:8000"
+      - "8088:8088"
+      - "9997:9997"
+    volumes:
+      - splunk-etc:/opt/splunk/etc
+      - splunk-var:/opt/splunk/var
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  splunk-forwarder:
+    image: splunk/universalforwarder:latest
+    user: root
+    environment:
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=password123
+      - SPLUNK_STANDALONE_URL=splunk:9997
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/splunk/inputs.conf:/opt/splunkforwarder/etc/system/local/inputs.conf:ro
+      - ./config/splunk/outputs.conf:/opt/splunkforwarder/etc/system/local/outputs.conf:ro
+    depends_on:
+      - splunk
+
 volumes:
   pg-data:
-  redis-data: # Placeholder if we add Redis later, but skipping for minimal scaffold as per specific instructions (User didn't ask for Redis in this strict list, but mentioned it in overall context. I will stick to the strict list for this prompt.)
+  redis-data:
+  splunk-etc:
+  splunk-var:

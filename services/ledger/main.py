@@ -1,10 +1,26 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from jose import JWTError, jwt
 import models
 from database import engine, get_db
+import logging
+from pythonjsonlogger import jsonlogger
+import sys
+import redis
+
+# Logging Config
+logger = logging.getLogger()
+logHandler = logging.StreamHandler(sys.stdout)
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+logger.setLevel(logging.INFO)
+
+# Redis for Ban Hammer
+redis_client = redis.Redis(host='redis', port=6379, db=0)
 
 # Create tables
 models.Base.metadata.create_all(bind=engine)
@@ -14,6 +30,14 @@ import pika
 import json
 
 app = FastAPI()
+
+@app.middleware("http")
+async def blacklist_middleware(request: Request, call_next):
+    client_ip = request.client.host
+    if redis_client.exists(f"blacklist:{client_ip}"):
+        logger.warning(f"Banned IP attempted access: {client_ip}")
+        return JSONResponse(status_code=403, content={"detail": "Access Denied: IP Banned"})
+    return await call_next(request)
 
 # RabbitMQ Connection Helper
 def get_rabbitmq_channel():
@@ -49,7 +73,7 @@ def startup_event():
     # Seed CEO Account if not exists
     ceo_account = db.query(models.Account).filter(models.Account.user_id == 99).first()
     if not ceo_account:
-        print("Seeding CEO Account...")
+        logger.info("Seeding CEO Account...")
         ceo_account = models.Account(user_id=99, account_number="CEO-001", balance=1000000.0)
         db.add(ceo_account)
         db.commit()
@@ -66,7 +90,9 @@ def get_balance(account_id: int, current_user: dict = Depends(get_current_user),
     # FLAW: No check if account_id belongs to current_user['sub'] (or implicit ID)
     account = db.query(models.Account).filter(models.Account.id == account_id).first()
     if not account:
+        logger.warning(f"Balance check failed: Account {account_id} not found")
         raise HTTPException(status_code=404, detail="Account not found")
+    logger.info(f"Balance checked for account {account_id} by {current_user.get('sub')}")
     return {"account_number": account.account_number, "balance": account.balance}
 
 # VULNERABILITY 2: SQL Injection in Search
@@ -74,7 +100,7 @@ def get_balance(account_id: int, current_user: dict = Depends(get_current_user),
 def search_transactions(q: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     # FLAW: Using f-string for query construction
     query_str = f"SELECT * FROM transactions WHERE description LIKE '%{q}%'"
-    print(f"Executing Query: {query_str}")
+    logger.info(f"Executing Query: {query_str}")
     
     try:
         # Use execute to run raw SQL
@@ -87,6 +113,7 @@ def search_transactions(q: str, current_user: dict = Depends(get_current_user), 
         # but for raw SQL we often get tuples. Let's try to be robust or simple.
         # SQLAlchemy 1.4/2.0 text() results usually behave like named tuples.
     except Exception as e:
+        logger.error(f"Search query error: {str(e)}")
         return {"error": str(e), "query": query_str}
 
 @app.post("/transfer", status_code=202)
@@ -146,6 +173,7 @@ def transfer_funds(request: TransferRequest, current_user: dict = Depends(get_cu
             ))
         connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq')) # Re-open to close securely or use channel object?
         # get_rabbitmq_channel implementation opens new one every time. inefficient but fine for CTF.
+        logger.info(f"Transaction queued for {current_user['sub']}: {request.amount} to {request.to_account}")
         return {"status": "Transaction Queued"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

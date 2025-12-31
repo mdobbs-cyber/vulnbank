@@ -93,8 +93,14 @@ def process_transfer(ch, method, properties, body):
 
 def main():
     # Wait for RabbitMQ
-    time.sleep(10)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    # Wait for RabbitMQ with retry
+    connection = None
+    while connection is None:
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+        except pika.exceptions.AMQPConnectionError:
+            print("RabbitMQ not yet ready, retrying in 5 seconds...")
+            time.sleep(5)
     channel = connection.channel()
     channel.queue_declare(queue='money_transfer', durable=True)
 

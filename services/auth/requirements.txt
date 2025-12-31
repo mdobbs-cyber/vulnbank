@@ -5,3 +5,5 @@ sqlalchemy
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
+python-json-logger
+redis

@@ -4,3 +4,5 @@ psycopg2-binary
 sqlalchemy
 python-jose[cryptography]
 pika
+python-json-logger
+redis
