@@ -109,7 +109,7 @@ function Dashboard({ token, onLogout }) {
             </div>
 
             <footer style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-                &copy; 2023 Vulnerable Bank Corp. All rights reserved. <br />
+                &copy; 2025 Vulnerable Bank Corp. All rights reserved. <br />
                 Authorized Use Only. System Integrity Monitored.
             </footer>
         </div>
