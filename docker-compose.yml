@@ -42,6 +42,13 @@ services:
       - rabbitmq
       - db
 
+  status-dashboard:
+    build: ./services/status-dashboard
+    volumes:
+      - ${DOCKER_SOCK_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
+    ports:
+      - "8081:8000"
+
   db:
     image: postgres:16-alpine
     environment:
@@ -95,11 +102,11 @@ services:
       - SPLUNK_START_ARGS=--accept-license
       - SPLUNK_PASSWORD=password123
       - SPLUNK_STANDALONE_URL=splunk:9997
+      - SPLUNK_USER=root
     volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./config/splunk/inputs.conf:/opt/splunkforwarder/etc/system/local/inputs.conf:ro
-      - ./config/splunk/outputs.conf:/opt/splunkforwarder/etc/system/local/outputs.conf:ro
+      - ${DOCKER_CONTAINERS_PATH:-/var/lib/docker/containers}:/var/lib/docker/containers:ro
+      - ${DOCKER_SOCK_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
+      - ./config/splunk/vulnbank_config:/opt/splunkforwarder/etc/apps/vulnbank_config
     depends_on:
       - splunk
 
