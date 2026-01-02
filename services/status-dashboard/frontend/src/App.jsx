@@ -7,15 +7,25 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [splunkComplete, setSplunkComplete] = useState(false)
 
+  // Game Time State
+  const [gameStartTime, setGameStartTime] = useState(null)
+  const [timeElapsed, setTimeElapsed] = useState("00:00:00")
+
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/status')
       const data = await res.json()
-      setContainers(data)
+
+      // Update state based on new response structure
+      setContainers(data.containers || [])
+      if (data.game_start_time) {
+        setGameStartTime(data.game_start_time)
+      }
+
       setLastUpdated(new Date().toLocaleTimeString())
 
       // Check if splunk forwarder is done
-      const forwarder = data.find(c => c.name.includes('splunk-forwarder'))
+      const forwarder = (data.containers || []).find(c => c.name.includes('splunk-forwarder'))
       if (forwarder && forwarder.provisioning_complete) {
         setSplunkComplete(true)
       } else {
@@ -27,6 +37,33 @@ function App() {
       setLoading(false)
     }
   }
+
+  // Ticking Clock Effect
+  useEffect(() => {
+    if (!gameStartTime) return
+
+    const tick = () => {
+      const start = new Date(gameStartTime).getTime()
+      const now = new Date().getTime()
+      const diff = now - start
+
+      if (diff < 0) {
+        setTimeElapsed("00:00:00")
+        return
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      const pad = (n) => n.toString().padStart(2, '0')
+      setTimeElapsed(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`)
+    }
+
+    tick() // Initial call
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [gameStartTime])
 
   useEffect(() => {
     fetchStatus()
@@ -43,10 +80,33 @@ function App() {
 
   return (
     <div className="container" style={{ padding: '2rem', fontFamily: 'Arial, sans-serif' }}>
-      <header style={{ marginBottom: '2rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>White Team Status Dashboard</h1>
-        <div style={{ marginTop: '0.5rem', color: '#666' }}>
-          Last Updated: {lastUpdated}
+      <header style={{
+        marginBottom: '2rem',
+        borderBottom: '1px solid #eee',
+        paddingBottom: '1rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <h1 style={{ margin: 0 }}>White Team Status Dashboard</h1>
+          <div style={{ marginTop: '0.5rem', color: '#666' }}>
+            Last Updated: {lastUpdated}
+          </div>
+        </div>
+
+        <div style={{
+          textAlign: 'right',
+          backgroundColor: '#333',
+          color: '#0f0',
+          padding: '0.5rem 1rem',
+          borderRadius: '4px',
+          fontFamily: 'monospace',
+          fontSize: '1.5rem',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>
+          <div>GAME TIME</div>
+          <div>{timeElapsed}</div>
         </div>
       </header>
 

@@ -110,6 +110,21 @@ services:
     depends_on:
       - splunk
 
+  ai-analyst:
+    build: ./services/ai-analyst
+    ports:
+      - "8501:8501"
+    environment:
+      - SPLUNK_HOST=splunk
+      - SPLUNK_PORT=8089
+      - SPLUNK_USERNAME=admin
+      - SPLUNK_PASSWORD=password123
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+
+    depends_on:
+      - splunk
+
+
 volumes:
   pg-data:
   redis-data:

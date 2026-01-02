@@ -34,6 +34,25 @@ The system is built using Docker Compose and consists of the following services:
     *   **Frontend:** [http://localhost](http://localhost)
     *   **Auth API Docs:** [http://localhost/auth/docs](http://localhost/auth/docs)
     *   **Ledger API Docs:** [http://localhost/ledger/docs](http://localhost/ledger/docs)
+    *   **White Team Dashboard:** [http://localhost:8081](http://localhost:8081)
+        *   View the status of all containers and the "Game Time" clock.
+    *   **AI SOC Analyst:** [http://localhost:8501](http://localhost:8501)
+        *   Chat with an AI assistant (powered by Gemini 2.0 Flash) to analyze Splunk logs.
+        *   Track Indicators of Compromise (IOCs).
+
+### 🔑 Configuration (AI Analyst)
+
+To use the AI SOC Analyst, you need a Google Gemini API Key.
+
+1.  Create a `.env` file in the root directory:
+    ```env
+    GEMINI_API_KEY=your_actual_api_key_here
+    ```
+2.  Restart the service to apply changes:
+    ```bash
+    docker-compose up -d ai-analyst
+    ```
+
 
 ### 🛑 Troubleshooting
 If the frontend or services fail to start, check the logs:

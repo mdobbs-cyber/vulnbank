@@ -1,8 +1,13 @@
 # Build Stage
-FROM node:18-alpine as build
+FROM node:22-alpine as build
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm install
+# Set registry to default and increase timeout for reliability
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set fetch-retry-maxtimeout 600000 && \
+    npm config set fetch-retry-mintimeout 10000 && \
+    npm install --verbose
+
 COPY frontend ./
 RUN npm run build
 
